@@ -1,0 +1,230 @@
+# Лабораторная работа №1. EDA платформы FishGrow
+
+**Дисциплина**: Введение в искусственный интеллект  
+**Студент**: Шефер Анна Александровна, 22206
+**Дата**: 2026-09-23  
+**Ветка**: lab/01-eda
+
+## 1. Сведения о воспроизведении
+
+- **Репозиторий**: https://github.com/AnnaShefer3/lab1-fish-dimensions.git
+- **Исходный коммит (полный хэш)**: 1f65547b63c3043e2dcfff0c6435afa993331d4e
+- **Исходный коммит (сокращённый)**: 1f65547
+- **Дата фиксации коммита**: 2026-09-23
+- **Версия Python**: 3.11.5
+- **Менеджер окружения**: pipenv
+- **Ключевые библиотеки**:
+  - dash 4.4.1
+  - pandas 3.0.6
+  - numpy 2.4.6
+  - plotly 7.1.0
+  - sklearn 1.9.1
+- **Команда запуска**: `python run.py`
+
+## 2. Журнал проблем и решений
+
+### Проблема 1. pipenv не был установлен
+
+**Исходная ошибка**:
+
+pipenv : Имя "pipenv" не распознано как имя командлета, функции, файла сценария
+или выполняемой программы.
+
+**Причина**: модуль `pipenv` отсутствовал в Python 3.11 по пути `C:\Python\Python311\python.exe`.
+
+**Минимальное решение**:
+
+C:\Python\Python311\python.exe -m pip install --user pipenv
+
+**Результат**: pipenv успешно установлен, версия 2026.8.0.
+
+---
+
+### Проблема 2. Несовместимость версии Python
+
+**Исходная ошибка**:
+
+Warning: Python 3.7 was not found on your system...
+Python was not found on your system and none of 'pyenv', 'asdf', or 'pymanager'
+could be found to install Python.
+
+**Причина**: в `Pipfile` указано требование `python_version = "3.7"`, в системе установлен только Python 3.11.
+
+**Выбранное решение**: использовать Python 3.11 с изменением `Pipfile`.
+
+**Действия**:
+
+1. В файле `Pipfile` удален блок:
+  
+   [requires]
+   # python_version = "3.7"
+   
+2. Окружение создано командой:
+   
+   C:\Python\Python311\python.exe -m pipenv --python 3.11 install --dev
+   
+---
+
+### Проблема 3. Установка зависимостей не завершилась (pandas, brotli)
+
+**Исходная ошибка**:
+
+ERROR: Failed to build 'pandas' when getting requirements to build wheel
+ERROR: Couldn't install package(s): brotli==1.0.9 ...
+Package installation failed...
+
+**Причина**: `Pipfile.lock` создан для Python 3.7. Пакеты `pandas` и `brotli` в зафиксированных версиях не имеют готовых бинарных сборок (wheels) под Python 3.11 на Windows, поэтому pip пытается собрать их из исходного кода, что требует компилятора C++ (Visual Studio Build Tools).
+
+**Минимальное решение**:
+
+1. Удалено старое окружение:
+   
+   C:\Python\Python311\python.exe -m pipenv --rm
+   
+2. Создано новое без строгого lock-файла:
+
+   C:\Python\Python311\python.exe -m pipenv --python 3.11 install --dev --skip-lock
+
+**Отклонение от воспроизводимости**: `Pipfile.lock` пересоздан, версии библиотек могут отличаться от исходных. Это осознанное отклонение, необходимое для запуска проекта в текущем окружении. Фактические версии зафиксированы в `environment_lock.txt`.
+
+---
+
+### Проблема 4. Модуль sklearn не установлен
+
+**Исходная ошибка**:
+
+ModuleNotFoundError: No module named 'sklearn'
+
+**Причина**: пакет `scikit-learn` не входил в `Pipfile` как основная зависимость или был пропущен при установке через `--skip-lock`.
+
+**Минимальное решение**:
+
+C:\Python\Python311\python.exe -m pipenv run pip install scikit-learn
+
+**Результат**: scikit-learn успешно установлен. Пакет добавлен в `Pipfile` для воспроизводимости.
+
+---
+
+### Проблема 5. Несовместимость API `dash-bootstrap-components`
+
+**Исходная ошибка**:
+
+TypeError: The `dash_bootstrap_components.NavbarSimple` component
+(version 2.0.4) received an unexpected keyword argument: `light`
+Allowed arguments: brand, brand_external_link, brand_href, brand_style,
+children, className, class_name, color, dark, expand, fixed, fluid, id,
+key, links_left, sticky, style
+
+**Причина**: в `run.py` (строка ~20) используется параметр `light=True` компонента `dbc.NavbarSimple`. В версии `dash-bootstrap-components` 2.0.4 этот параметр удалён — вместо него используются `color` и `dark`.
+
+**Минимальное решение**: в `run.py` удалена строка `light=True,`. Параметры `color='light'` и `dark=False` уже были указаны и дают эквивалентное поведение.
+
+**Отклонение от исходного состояния**: код `run.py` изменён для совместимости с установленной версией библиотеки. Это осознанное отклонение, необходимое для запуска приложения.
+
+---
+
+### Проблема 6. Устаревший метод `app.run_server`
+
+**Исходная ошибка**:
+
+dash.exceptions.ObsoleteAttributeException: app.run_server has been replaced by app.run
+
+**Причина**: в `run.py` (строка ~93) используется метод `app.run_server(debug=True)`. В новых версиях Dash этот метод удалён и заменён на `app.run`.
+
+**Минимальное решение**: в `run.py` строка
+
+app.run_server(debug=True)
+
+заменена на
+
+app.run(debug=True)
+
+**Отклонение от исходного состояния**: код `run.py` изменён для совместимости с установленной версией Dash.
+
+---
+
+### Особенности установки
+
+При установке pipenv пропустил несколько пакетов из исходного `Pipfile.lock` из-за маркеров (markers), не соответствующих текущему Python 3.11:
+
+- `importlib-metadata` (marker: `python_version < "3.8"`)
+- `numpy` (marker: `python_version < "3.10"`)
+- `scipy` (marker: `python_version < "3.11"`)
+- `typing-extensions` (marker: `python_version < "3.8"`)
+
+Это **не ошибка**: пакеты не требуются для Python 3.11, поэтому pipenv их корректно пропустил.
+
+**Отклонение от исходного состояния**: исходный `Pipfile.lock` (хэш 264a48) создан для Python 3.7 и не мог быть установлен в текущем окружении (пакеты `pandas` и `brotli` не имеют сборок под Python 3.11 на Windows). Окружение создано через `--skip-lock`, `Pipfile.lock` пересоздан под Python 3.11. Фактические версии библиотек зафиксированы в `environment_lock.txt`.
+
+---
+
+## 3. Что проверено вручную
+
+Приложение запущено командой:
+
+```powershell
+C:\Python\Python311\python.exe -m pipenv run python run.py
+```
+
+Результат запуска:
+
+```
+Dash is running on http://127.0.0.1:8050/
+ * Serving Flask app 'app'
+ * Debug mode: on
+```
+
+Проверено в браузере:
+
+- **Главная страница** (`http://127.0.0.1:8050/`) — открывается корректно, отображается навбар с заголовком «Fish Dimensions Regression Analysis» и ссылкой «Predictions».
+- **Страница прогнозирования** (`http://127.0.0.1:8050/predictions`) — открывается корректно, содержит форму прогноза.
+
+Скриншоты сохранены в `reports/figures/`:
+
+- `reports/figures/home_page.png`
+- `reports/figures/predictions_page.png`
+
+---
+
+## 4. Паспорт данных
+
+<заполняется на шаге 3.2>
+
+---
+
+## 5. Проверки качества
+
+<заполняется на шаге 3.3>
+
+---
+
+## 6. Визуализации
+
+<заполняется на шаге 3.4>
+
+---
+
+## 7. Пропуски и выбросы
+
+<заполняется на шаге 3.5>
+
+---
+
+## 8. Гипотезы о признаках
+
+<заполняется на шаге 3.6>
+
+---
+
+## 9. Разбиение и проверка утечек
+
+<заполняется на шаге 3.7>
+
+---
+
+
+## 10. Использование ИИ
+
+- **Инструмент**: DeepSeek
+- **Что делал ИИ**: диагностика ошибок установки pipenv и несовместимости версий Python, объяснение формата Markdown, структура отчёта.
+- **Что проверено вручную**: все команды выполнены самостоятельно, результаты проверены в терминале.
