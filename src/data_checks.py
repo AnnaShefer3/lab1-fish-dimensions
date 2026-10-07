@@ -72,3 +72,69 @@ def check_unique_fields(df):
             "is_unique": n_unique == len(df),
         }
     return result
+
+
+def validate_schema(df: pd.DataFrame) -> dict:
+    """
+    Формальная схема проверки данных FishGrow.
+
+    Проверяет:
+    - наличие ожидаемых столбцов
+    - диапазоны значений
+    - допустимые виды рыб
+    - пропуски
+
+    Возвращает:
+    - valid: bool
+    - errors: list[str]
+    - n_rows, n_cols: размеры
+    """
+    expected_columns = ['Species', 'Weight', 'Length1', 'Length2',
+                        'Length3', 'Height', 'Width']
+
+    expected_ranges = {
+        'Weight':  (1, 2000, 'граммы'),
+        'Length1': (5, 100, 'см'),
+        'Length2': (5, 100, 'см'),
+        'Length3': (5, 100, 'см'),
+        'Height':  (1, 30, 'см'),
+        'Width':   (1, 15, 'см'),
+    }
+
+    expected_species = {'Bream', 'Roach', 'Perch', 'Pike',
+                        'Smelt', 'Parkki', 'Whitefish'}
+
+    errors = []
+
+    missing = set(expected_columns) - set(df.columns)
+    if missing:
+        errors.append(f"Отсутствуют столбцы: {sorted(missing)}")
+
+    for col, (lo, hi, units) in expected_ranges.items():
+        if col in df.columns:
+            col_min = df[col].min()
+            col_max = df[col].max()
+            if col_min < lo:
+                errors.append(f"{col}: min={col_min} < {lo} ({units}) — возможна ошибка единиц")
+            if col_max > hi:
+                errors.append(f"{col}: max={col_max} > {hi} ({units}) — возможна ошибка единиц")
+
+    if 'Species' in df.columns:
+        unknown = set(df['Species'].unique()) - expected_species
+        if unknown:
+            errors.append(f"Неизвестные виды: {sorted(unknown)}")
+
+        # 4. Проверка пропусков — только исходные поля
+    original_columns = ['Species', 'Weight', 'Length1', 'Length2',
+                        'Length3', 'Height', 'Width']
+    existing_original = [c for c in original_columns if c in df.columns]
+    missing_in_original = df[existing_original].isna().sum()
+    if missing_in_original.sum() > 0:
+        errors.append(f"Пропуски в исходных полях: {missing_in_original[missing_in_original > 0].to_dict()}")
+        
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "n_rows": len(df),
+        "n_cols": len(df.columns),
+    }
